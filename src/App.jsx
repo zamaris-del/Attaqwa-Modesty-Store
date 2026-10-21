@@ -1,114 +1,146 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export default function App(){
-  const [stage,setStage]=useState('bed')
+  const canvasRef=useRef(null)
   const [user,setUser]=useState(null)
   const [name,setName]=useState('')
   const [cash,setCash]=useState(12450)
-  const [worth,setWorth]=useState(12450)
-  const [tier,setTier]=useState(3)
+  const [pos,setPos]=useState({x:200,y:200})
+  const [carPos,setCarPos]=useState({x:350,y:200})
+  const [inCar,setInCar]=useState(false)
   const [wanted,setWanted]=useState(0)
-  const [nepa,setNepa]=useState(true)
-  const [visaStatus,setVisaStatus]=useState(null)
-  const [embassyStage,setEmbassyStage]=useState(null)
-  const [queueNum,setQueueNum]=useState(0)
-  const [inDolls,setInDolls]=useState(false)
-  const [onFoot,setOnFoot]=useState(true)
-  const [avatar,setAvatar]=useState('baddie') // baddie, alhaji, yahoo, street
-  const [walking,setWalking]=useState(false)
+  const [tier,setTier]=useState(3)
+  const [keys,setKeys]=useState({})
   const [cars,setCars]=useState(['Brabus G-Wagon'])
-  const [currentCar,setCurrentCar]=useState(null)
-  const [houses,setHouses]=useState(['Mushin House'])
-  const [badges,setBadges]=useState([])
-  const [bankBalance,setBankBalance]=useState(5000)
-  const [radio,setRadio]=useState("RADIO LAGOS 99.3 - GTA AVATAR LIVE! Waka enter car animation!")
+  
+  // GTA controls
+  useEffect(()=>{
+    const down=e=>setKeys(k=>({...k,[e.key]:true}))
+    const up=e=>setKeys(k=>({...k,[e.key]:false}))
+    window.addEventListener('keydown',down)
+    window.addEventListener('keyup',up)
+    return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up)}
+  },[])
 
-  useEffect(()=>{const id=setInterval(()=>setNepa(p=>!p),15000);return()=>clearInterval(id)},[])
-  useEffect(()=>{let id;if(embassyStage==='queue'){id=setInterval(()=>setQueueNum(n=>{if(n>=15){setEmbassyStage('form');return 0}return n+1}),800)}return()=>clearInterval(id)},[embassyStage])
+  // Game loop - avatar waka
+  useEffect(()=>{
+    if(!user) return
+    const id=setInterval(()=>{
+      if(inCar){
+        let nx=carPos.x, ny=carPos.y
+        if(keys['ArrowUp']||keys['w']) ny-=6
+        if(keys['ArrowDown']||keys['s']) ny+=6
+        if(keys['ArrowLeft']||keys['a']) nx-=6
+        if(keys['ArrowRight']||keys['d']) nx+=6
+        setCarPos({x:Math.max(0,Math.min(700,nx)), y:Math.max(0,Math.min(400,ny))})
+        setPos({x:nx,y:ny})
+      } else {
+        let nx=pos.x, ny=pos.y
+        if(keys['ArrowUp']||keys['w']) ny-=4
+        if(keys['ArrowDown']||keys['s']) ny+=4
+        if(keys['ArrowLeft']||keys['a']) nx-=4
+        if(keys['ArrowRight']||keys['d']) nx+=4
+        setPos({x:Math.max(0,Math.min(700,nx)), y:Math.max(0,Math.min(400,ny))})
+      }
+    },16)
+    return()=>clearInterval(id)
+  },[keys,pos,carPos,inCar,user])
 
-  function getTier(w){if(w>=10000)return 4;if(w>=5000)return 3;if(w>=3000)return 2;return 1}
-  function buy(item,price,type,loc){
-    if(cash<price&&type!=='bank'){setWanted(w=>Math.min(w+1,5));alert("EFCC! No cash Wanted +1 ⭐");return}
-    if(type!=='bank')setCash(cash-price);const nw=worth+price;setWorth(nw);setTier(getTier(nw));if(getTier(nw)===4)setAvatar('alhaji');else if(getTier(nw)===3)setAvatar('baddie')
-    if(type==='car'){setCars([...cars,item]);setCurrentCar(item);setOnFoot(false);setWalking(false);alert("ENTER CAR ANIMATION: "+item+" - Door open, avatar enter, engine start! GTA style!")}if(type==='house')setHouses([...houses,item])
-    if(type==='dolls'){if(cash>=5000||price===10000){setInDolls(true);setBadges([...badges,"Dolls VIP 💎"]);alert("Dolls 70M Allen neon bouncer check OK! Avatar gold chain shine street!")}else alert("Need 70M! Bouncer push: Oga go hustle more you no reach here!");return}
-    if(type==='bank'){if(item.includes('Withdraw')){setBankBalance(b=>b-100);setCash(c=>c+100)}else if(item.includes('Deposit')){setBankBalance(b=>b+100);setCash(c=>c-100)}return}
-    if(type==='foot'){setOnFoot(true);setCurrentCar(null);setWalking(true);setTimeout(()=>setWalking(false),800);return}
-    alert("PAYSTACK "+item+" to "+loc+" - Avatar waka!")
+  // Draw GTA map
+  useEffect(()=>{
+    if(!canvasRef.current) return
+    const ctx=canvasRef.current.getContext('2d')
+    ctx.clearRect(0,0,800,450)
+    // Road - Allen Avenue
+    ctx.fillStyle='#444'
+    ctx.fillRect(0,180,800,90)
+    ctx.fillRect(180,0,90,450)
+    ctx.strokeStyle='#ffff00'
+    ctx.setLineDash([20,20])
+    ctx.beginPath(); ctx.moveTo(0,225); ctx.lineTo(800,225); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(225,0); ctx.lineTo(225,450); ctx.stroke()
+    ctx.setLineDash([])
+    // Buildings
+    ctx.fillStyle='#8a7a5a'
+    ctx.fillRect(0,0,170,170); ctx.fillRect(280,0,520,170); ctx.fillRect(0,280,170,170); ctx.fillRect(280,280,520,170)
+    // Shop signs
+    ctx.fillStyle='#0066cc'; ctx.fillRect(10,10,100,30); ctx.fillStyle='white'; ctx.font='12px monospace'; ctx.fillText('MTN 5G',20,30)
+    ctx.fillStyle='#ff0000'; ctx.fillRect(300,10,120,30); ctx.fillStyle='white'; ctx.fillText('Chicken Republic',310,30)
+    ctx.fillStyle='#ffd700'; ctx.fillRect(600,290,140,30); ctx.fillStyle='black'; ctx.fillText('DIAMOND DOLLS 70M',610,310)
+    ctx.fillStyle='#00aa00'; ctx.fillRect(10,290,100,30); ctx.fillStyle='white'; ctx.fillText('First Bank',20,310)
+    // Danfo yellow bus
+    ctx.fillStyle='#ffcc00'; ctx.fillRect(500,190,60,40); ctx.fillStyle='black'; ctx.fillText('DANFO',510,215)
+    // Police car if wanted
+    if(wanted>0){ctx.fillStyle='#0000ff'; ctx.fillRect(100,190,50,30); ctx.fillStyle='white'; ctx.fillText('POLICE',105,210)}
+    // Avatar or Car
+    if(inCar){
+      ctx.fillStyle='#111'; ctx.fillRect(carPos.x-25,carPos.y-15,50,30)
+      ctx.fillStyle='#ffd700'; ctx.font='20px monospace'; ctx.fillText('B',carPos.x-8,carPos.y+5)
+      ctx.fillStyle='gold'; ctx.fillRect(carPos.x-5,carPos.y-20,10,10)
+    } else {
+      const isNearCar=Math.hypot(pos.x-carPos.x,pos.y-carPos.y)<40
+      ctx.fillStyle=tier===4?'gold':tier===3?'#ff69b4':'#333'
+      ctx.beginPath(); ctx.arc(pos.x,pos.y,14,0,Math.PI*2); ctx.fill()
+      ctx.fillStyle='black'; ctx.font='18px monospace'; ctx.fillText(tier===4?'👳':'🧑',pos.x-9,pos.y+6)
+      if(isNearCar){ctx.fillStyle='lime'; ctx.fillRect(pos.x-30,pos.y-40,60,15); ctx.fillStyle='black'; ctx.font='10px monospace'; ctx.fillText('Press E Enter',pos.x-25,pos.y-30)}
+    }
+  },[pos,carPos,inCar,wanted,tier])
+
+  function tryEnter(){
+    if(inCar){setInCar(false);return}
+    if(Math.hypot(pos.x-carPos.x,pos.y-carPos.y)<40){setInCar(true);setCars([...cars,'Brabus Entered'])}
+    else alert("Waka near Brabus G-Wagon first! Like GTA - near motor press E enter!")
   }
 
-  const avatars={
-    street:{head:'🧑',body:'👕',leg:'👖',shoe:'👟',color:'#333',name:'Street Boy Mushin - T1'},
-    baddie:{head:'👩‍🦱',body:'👚',leg:'👖',shoe:'👠',color:'#ff69b4',name:'Baddie Bintu T3 - Lekki'},
-    alhaji:{head:'👳‍♂️',body:'👘',leg:'🩳',shoe:'🩴',color:'gold',name:'Alhaji Tunde T4 Brabus Gold - Banana VIP'},
-    yahoo:{head:'🧑‍💻',body:'👔',leg:'👖',shoe:'👞',color:'#0f0',name:'Yahoo Boy EFCC Wanted'},
-  }
-  const av=avatars[avatar]
-
-  if(!user)return<div style={{height:'100vh',background:'black',color:'lime',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',fontFamily:'monospace',padding:20,textAlign:'center'}}><h1>GRAND THEFT LAGOS</h1><p>V26 GTA AVATAR EDITION - Real Person Waka Enter Car!</p><div style={{fontSize:60,marginTop:10}}>{av.head}<br/>{av.body}<br/>{av.leg}<br/>{av.shoe}</div><p>{av.name} - Avatar change with Tier - Tier 1 Street T1, Tier 3 Baddie, Tier 4 Alhaji Gold</p><input value={name} onChange={e=>setName(e.target.value)} placeholder="Alhaji Tunde / Baddie Bintu" style={{padding:12,width:'80%',background:'black',color:'lime',border:'2px solid lime',textAlign:'center',marginTop:20}}/><button onClick={()=>setUser({name:name||"Boss"})} style={{marginTop:20,padding:'15px 40px',background:'lime',color:'black',fontWeight:'bold'}}>WAKE UP MUSHIN BED - AVATAR WAKA</button></div>
-
-  if(stage==='bed')return<div style={{height:'100vh',background:nepa?'#8aa8a0':'#111',color:'white',fontFamily:'monospace',padding:20}}><div style={{background:'black',padding:10,textAlign:'center',border:'2px solid gold'}}>WAKE UP MUSHIN BED - Mosquito Net GEN 5.5KVA - Visa {visaStatus||"No visa"} - NEPA {nepa?"ON":"OFF"} Avatar {av.name}</div><div style={{marginTop:20,display:'flex',justifyContent:'center',gap:20}}><div style={{background:'#5a4a3a',width:120,height:180,border:'4px solid #333',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',fontSize:40}}><div>{av.head}</div><div style={{color:av.color}}>{av.body}</div><div>{av.leg}</div><div>{av.shoe}</div><div style={{fontSize:10,marginTop:5}}>{av.name}</div></div><div style={{background:'#333',width:200,height:100,border:'2px solid white',display:'flex',justifyContent:'center',alignItems:'center'}}>BED Danfo Brabus Window<br/>Avatar dey sleep!</div></div><button onClick={()=>setStage('street')} style={{marginTop:20,padding:20,width:'100%',background:'lime',color:'black',fontWeight:'bold'}}>GET UP FROM BED → STREET GTA AVATAR WAKA 🚶</button></div>
-
-  if(embassyStage)return<div style={{height:'100vh',background:'#0a2a5a',color:'white',fontFamily:'monospace',padding:20}}>{embassyStage==='queue'&&<div><h1>US Embassy VI Lagos Queue {queueNum}/15</h1><div style={{width:'100%',height:20,background:'#222'}}><div style={{width:queueNum/15*100+'%',height:'100%',background:'gold'}}/></div><div style={{marginTop:20,fontSize:30}}>Avatar for queue: {av.head} sit down wait number dey call - Real life!</div></div>}{embassyStage==='form'&&<div><h1>Visa Form Bank {cash} {cash>=150?"✅":"❌"} Houses {houses.length}</h1><button onClick={()=>{setEmbassyStage('interview');}} style={{...btn,background:'gold',color:'black',padding:15}}>Submit → Interview</button></div>}{embassyStage==='interview'&&<div><h1>Interview: Why you wan go USA? You go come back? Who sponsor? Timer!</h1><button onClick={()=>{setVisaStatus(Math.random()<0.6?"APPROVED - Visa stamp book flight ✈️":"REJECTED - Insufficient ties Wait 3 days 20 coins");setEmbassyStage('result')}} style={btn}>Answer - Tourist Olumo ties house job family</button></div>}{embassyStage==='result'&&<div><h1 style={{color:visaStatus.includes('APPROVED')?'lime':'red'}}>{visaStatus}</h1><button onClick={()=>setEmbassyStage(null)} style={btn}>Back to Street Avatar waka</button></div>}</div>
+  if(!user) return <div style={{height:'100vh',background:'url(https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9)',backgroundSize:'cover',color:'white',fontFamily:'monospace',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',padding:20,textAlign:'center'}}>
+    <div style={{background:'rgba(0,0,0,0.85)',padding:20,border:'3px solid gold'}}>
+      <h1 style={{fontSize:28,letterSpacing:4}}>GRAND THEFT AUTO V</h1>
+      <h2 style={{color:'gold'}}>LAGOS - ALLEN AVENUE EDITION</h2>
+      <p style={{fontSize:10}}>REAL GTA STYLE - Avatar waka for street, enter Brabus, Danfo, Police chase, Diamond Dolls 70M, Bank, Embassy Visa</p>
+      <div style={{fontSize:40,margin:10}}>👳‍♂️ 🚙 👩‍🦱</div>
+      <p>Alhaji Gold Agbada + Baddie + Brabus G-Wagon - MTN 5G - Chicken Republic - Danfo Yellow Bus</p>
+      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Enter Street Name" style={{padding:12,width:'80%',background:'black',color:'lime',border:'2px solid lime',textAlign:'center',marginTop:10}}/>
+      <button onClick={()=>setUser({name:name||"Boss"})} style={{marginTop:10,padding:'15px 40px',background:'gold',color:'black',fontWeight:'bold',border:'none'}}>START GTA LAGOS</button>
+    </div>
+  </div>
 
   return(
-    <div style={{height:'100vh',background:'#2a2a2a',position:'relative',fontFamily:'monospace',color:'white',overflow:'hidden'}}>
-      <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'repeating-linear-gradient(0deg,#333 0px,#333 1px,#3a3a3a 1px,#3a3a3a 40px),repeating-linear-gradient(90deg,#333 0px,#333 1px,#3a3a3a 1px,#3a3a3a 40px)'}}/>
-      <div style={{position:'absolute',top:0,left:0,right:0,display:'flex',justifyContent:'space-between',padding:10,zIndex:20,background:'rgba(0,0,0,0.9)'}}>
-        <div><div style={{background:'black',padding:'5px 10px',border:'2px solid white',fontSize:10}}>❤️ 78 🛡️ {tier>=3?100:40} {Array(wanted).fill(0).map((_,i)=><span key={i}>⭐</span>)} Avatar {av.name}</div></div>
-        <div style={{textAlign:'right'}}><div style={{color:'#0f0',fontSize:18}}>${cash} Worth {worth}</div><div style={{fontSize:8}}>Bank ${bankBalance} NEPA {nepa?"ON":"OFF"} T{tier} {badges.join(' ')} {inDolls?"DOLLS 70M 💎":""} Visa {visaStatus||"None"}</div><div style={{background:'red',padding:'2px 6px',fontSize:7,marginTop:3}}>🔴 {radio}</div></div>
+    <div style={{height:'100vh',background:'black',color:'white',fontFamily:'monospace',overflow:'hidden',position:'relative'}}>
+      {/* GTA HUD */}
+      <div style={{position:'absolute',top:0,left:0,right:0,zIndex:10,display:'flex',justifyContent:'space-between',padding:8,background:'rgba(0,0,0,0.8)'}}>
+        <div><span style={{background:'black',padding:'4px 8px',border:'2px solid white',fontSize:12}}>❤️ 78 🛡️ {tier>=3?100:40} {Array(wanted).fill(0).map((_,i)=><span key={i}>⭐</span>)}</span><div style={{fontSize:10,marginTop:4}}>{name} - T{tier} {inCar?"IN BRABUS G-WAGON 🚗":"ON FOOT 🚶"} - {inCar?"Drive W A S D like GTA":"Waka W A S D"}</div></div>
+        <div style={{textAlign:'right'}}><div style={{color:'#0f0',fontSize:20}}>${cash}</div><div style={{fontSize:10}}>Worth {cash} - Bank $5000 - Allen Ave</div></div>
       </div>
-      <div style={{position:'absolute',bottom:20,left:20,width:110,height:110,background:'black',border:'3px solid white',borderRadius:'50%',zIndex:20,overflow:'hidden'}}><div style={{width:'100%',height:'100%',background:'#0a4a0a',position:'relative'}}><div style={{position:'absolute',top:'50%',left:'50%',width:8,height:8,background:'lime',borderRadius:'50%',transform:'translate(-50%,-50%)'}}/></div><div style={{textAlign:'center',fontSize:8,background:'black'}}>LAGOS MAP - {onFoot?"ON FOOT 🚶":"IN CAR 🚗"} - Avatar {avatar}</div></div>
 
-      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center',zIndex:10,width:'95%',maxWidth:480,background:'rgba(0,0,0,0.92)',padding:10,border:'2px solid white',maxHeight:'68vh',overflowY:'auto'}}>
-        {/* GTA AVATAR DISPLAY */}
-        <div style={{display:'flex',justifyContent:'center',gap:15,alignItems:'center',background:'#111',padding:10,border:'2px solid '+av.color}}>
-          <div style={{textAlign:'center',background:'#222',padding:10,border:'2px solid white',minWidth:90}}>
-            <div style={{fontSize:walking?50:45,transition:'all 0.3s',transform:walking?'translateX(10px)':''}}>{av.head}</div>
-            <div style={{fontSize:25,color:av.color}}>{av.body}</div>
-            <div style={{fontSize:25}}>{av.leg}</div>
-            <div style={{fontSize:20}}>{av.shoe}</div>
-            <div style={{fontSize:7,marginTop:5,color:av.color}}>{av.name}<br/>{onFoot?"🚶 ON FOOT WAKA":"🚗 IN "+(currentCar||"Brabus")}<br/>{walking?"WALKING...":"STAND"}</div>
-            <div style={{fontSize:6,marginTop:3}}>{user.name} - Tier {tier} - {tier===4?"Brabus Gold Alhaji VIP Banana":"Tier "+tier}</div>
+      {/* REAL GTA MAP CANVAS */}
+      <canvas ref={canvasRef} width={800} height={450} style={{width:'100%',height:'70vh',background:'#2a2a2a',marginTop:60,borderTop:'2px solid gold',borderBottom:'2px solid gold'}}/>
+
+      {/* GTA CONTROLS */}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.95)',padding:10,zIndex:10}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{display:'grid',gridTemplateColumns:'40px 40px 40px',gridTemplateRows:'40px 40px',gap:2}}>
+            <div></div><button onTouchStart={()=>setKeys(k=>({...k,w:true}))} onTouchEnd={()=>setKeys(k=>({...k,w:false}))} onMouseDown={()=>setKeys(k=>({...k,w:true}))} onMouseUp={()=>setKeys(k=>({...k,w:false}))} style={gtaBtn}>↑ W</button><div></div>
+            <button onTouchStart={()=>setKeys(k=>({...k,a:true}))} onTouchEnd={()=>setKeys(k=>({...k,a:false}))} style={gtaBtn}>← A</button><button onTouchStart={()=>setKeys(k=>({...k,s:true}))} onTouchEnd={()=>setKeys(k=>({...k,s:false}))} style={gtaBtn}>↓ S</button><button onTouchStart={()=>setKeys(k=>({...k,d:true}))} onTouchEnd={()=>setKeys(k=>({...k,d:false}))} style={gtaBtn}>D →</button>
           </div>
-          <div style={{textAlign:'left',fontSize:9}}>
-            <b>GTA AVATAR REAL LIFE:</b><br/>
-            • Avatar waka for street Ikoyi→VI→MMA→Olumo Rock road<br/>
-            • Enter car animation: Door open, avatar enter, engine start!<br/>
-            • Come out car: Door open, avatar waka comot on foot!<br/>
-            • Cloth change with Tier: T1 Street Boy, T3 Baddie, T4 Alhaji Gold agbada<br/>
-            • NEPA: {nepa?"ON light avatar clear":"OFF dark avatar torchlight 🔦"}<br/>
-            • Visa: {visaStatus||"No visa"} - Queue avatar sit down wait!<br/>
-            • Dolls: {inDolls?"Inside 70M VIP gold chain shine!":"Outside"}<br/>
-            <div style={{marginTop:5,display:'flex',gap:3,flexWrap:'wrap'}}>
-              <button onClick={()=>setAvatar('street')} style={{...btn,fontSize:7}}>Street Boy T1 🧑</button>
-              <button onClick={()=>setAvatar('baddie')} style={{...btn,fontSize:7}}>Baddie T3 👩‍🦱</button>
-              <button onClick={()=>setAvatar('alhaji')} style={{...btn,fontSize:7,background:'gold',color:'black'}}>Alhaji T4 👳‍♂️ Gold</button>
-              <button onClick={()=>setAvatar('yahoo')} style={{...btn,fontSize:7}}>Yahoo EFCC 🧑‍💻</button>
+          <div style={{textAlign:'center'}}>
+            <button onClick={tryEnter} style={{...gtaBtn,background:'gold',color:'black',padding:'10px 20px',fontSize:12}}>{inCar?"🚪 COMOT FOR CAR (E)":"🚗 ENTER BRABUS (E) - Waka near"}</button>
+            <div style={{fontSize:8,marginTop:5,color:'lime'}}>GTA STYLE: W A S D waka, near motor press E enter, drive W A S D, press E comot. Danfo for road, Police if Wanted, Diamond Dolls 70M, Bank, Embassy!</div>
+            <div style={{display:'flex',gap:5,marginTop:5,justifyContent:'center'}}>
+              <button onClick={()=>{setWanted(0);alert("Wanted clear! Police comot!")}} style={btn}>Clear Wanted</button>
+              <button onClick={()=>{setTier(4);alert("You don turn Alhaji Gold T4 Banana VIP! Avatar gold agbada shine Allen Avenue!")}} style={{...btn,background:'gold',color:'black'}}>Become Alhaji T4 Gold</button>
+              <button onClick={()=>{window.location.href="https://zamari-house-link-up.vercel.app/"}} style={btn}>Full Map Version (Old)</button>
             </div>
           </div>
+          <div style={{width:90,height:90,background:'black',border:'2px solid white',borderRadius:'50%',position:'relative'}}>
+            <div style={{position:'absolute',top:'50%',left:'50%',width:8,height:8,background:inCar?'gold':'lime',borderRadius:'50%',transform:`translate(-50%,-50%) translate(${(pos.x-400)/20}px,${(pos.y-225)/15}px)`}}/>
+            <div style={{position:'absolute',top:5,left:10,fontSize:6,color:'yellow'}}>MTN 5G</div>
+            <div style={{position:'absolute',bottom:5,right:5,fontSize:6,color:'gold'}}>DOLLS 70M</div>
+            <div style={{textAlign:'center',fontSize:7,marginTop:95}}>ALLEN AVE MAP</div>
+          </div>
         </div>
-
-        {/* CONTROLS */}
-        <div style={{display:'flex',gap:5,flexWrap:'wrap',justifyContent:'center',marginTop:10}}>
-          <button onClick={()=>buy('Come out for car waka on foot',0,'foot','Street waka on foot GTA avatar')} style={{...btn,background:onFoot?'green':'black'}}>{onFoot?"🚶 ON FOOT WAKA NOW":"🚪 COMOT FOR CAR WAKA ON FOOT - Door open avatar comot!"}</button>
-          <button onClick={()=>{setEmbassyStage('queue');setQueueNum(0)}} style={{...btn,background:'blue'}}>🇳🇬 Embassy VI Queue Avatar sit down wait number call Form Interview 60/40</button>
-          <button onClick={()=>buy('Brabus Gold 10k',10000,'car','Banana - Avatar enter car animation door open engine start')} style={{...btn,background:'gold',color:'black'}}>🚗 Enter Brabus 10k T4 - Avatar enter car animation door open engine start!</button>
-          <button onClick={()=>buy('Bike 2k',2000,'car','Mushin - Bike avatar enter')} style={btn}>🏍️ Enter Bike 2k - Avatar enter bike helmet</button>
-          <button onClick={()=>buy('Dolls 70M',10000,'dolls','Allen neon bouncer 70M gold name shine avatar gold chain')} style={{...btn,background:'gold',color:'black'}}>💎 Strip/Dolls 70M Gate Bouncer check 70M Avatar gold chain shine street spray 1M</button>
-          <button onClick={()=>buy('ATM Withdraw 100',0,'bank','First Bank ATM avatar for queue')} style={btn}>🏦 Bank ATM Withdraw Balance {bankBalance} Avatar for queue ATM</button>
-          <button onClick={()=>{setStage('bed')}} style={btn}>💤 Bed Save Wake up routine Avatar sleep mosquito net GEN</button>
-        </div>
-
-        <div style={{marginTop:10,fontSize:7,textAlign:'left',background:'black',padding:5,border:'1px solid #555'}}>
-          GTA AVATAR: Real GTA get CJ / Franklin avatar wey dey waka, enter car door open, cloth shop change, hair cut. Now your game get am: Street Boy T1 Mushin, Baddie T3 Lekki, Alhaji T4 Banana Gold agbada, Yahoo Boy EFCC. Avatar waka animation when you press COMOT FOR CAR WAKA ON FOOT - Door open avatar comot on foot. Enter car animation door open avatar enter engine start! Tier change cloth: Worth 10k na Alhaji Gold. On foot vs In car show for minimap. Embassy queue avatar sit down wait number dey call. Bank queue avatar. Dolls 70M bouncer check avatar gold chain shine street when you enter. Next: Add joystick waka + car drive first-person third-person GTA + NEPA dark torchlight + Fuel + Police chase + Races football you dribble Teslim Balogun 5v5 GOAL crowd MTN + Car race Lekki Toll Gate NOS LASTMA + House race Banana build vote finest + Paid Call Audio 5 Video 15 + Dual World Flight USA Atlanta Oyinbo NPCs Walmart NBA + Overstay police no Airbnb hide + Knock door Kpai-kpai interior bedroom kitchen toilet owner notification No teleport + Masjid Imam Adhan 5 Jumah Friday + Church Sunday + Real Estate Landlord + Hajj Jerusalem + Inbox Pay300
-        </div>
-      </div>
-
-      <div style={{position:'absolute',top:80,right:10,width:105,background:'rgba(0,0,0,0.85)',border:'1px solid white',padding:5,zIndex:20,fontSize:8}}>
-        <b>AVATAR</b><br/>{av.head} {av.name}<br/>{onFoot?"ON FOOT 🚶 WAKA":"IN CAR 🚗 "+(currentCar||"Brabus")}<br/><b>GARAGE</b><br/>{cars.join(',')}<br/><b>HOUSES</b><br/>{houses.join(',')}<br/><b>WANTED</b><br/>{wanted===0?'CLEAN':wanted<3?'POLICE':'EFCC/ARMY!'}<br/>NEPA {nepa?"ON 💡 Avatar clear":"OFF 🔦 Torchlight"}<br/>Bank ${bankBalance}<br/>Visa {visaStatus||"None"}<br/>Tier {tier} {badges.join(' ')}
       </div>
     </div>
   )
 }
-const btn={padding:'6px 8px',background:'black',color:'white',border:'1px solid white',fontSize:9,fontFamily:'monospace',cursor:'pointer',margin:2}
+const btn={padding:'5px 8px',background:'black',color:'white',border:'1px solid white',fontSize:8,fontFamily:'monospace'}
+const gtaBtn={...btn,padding:'8px',background:'#222',fontSize:10}
